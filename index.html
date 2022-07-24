@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        #map {
+            width: 1200px;
+            height: 700px;
+        }
+        
+        .marker {
+            align-self: center;
+            width: 70px !important;
+            height: 70px !important;
+            margin-top: -40px !important;
+            margin-right: -50px !important;
+            border-radius: 40px !important;
+            border: 2px solid green;
+            text-align: center;
+            color: black;
+            background-color: #90ee90;
+            font-size: 18px;
+        }
+    </style>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.8.0/leaflet.css" />
+</head>
+
+<body>
+    <h1>Singapore</h1>
+    <div id="placeholder"></div>
+    <br />
+    <div id="placeholder2"></div>
+    <br />
+    <div id="map"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.8.0/leaflet.js"></script>
+    <script>
+        function capitalizeFirstLetter(string) {
+            return string.charAt(0).toUpperCase() + string.slice(1);
+        }
+
+        fetch("https://api.data.gov.sg/v1/environment/psi", {
+                method: "GET",
+            })
+            .then((res) => {
+                if (res.ok) {
+                    console.log("Success");
+                    return res.json();
+                } else {
+                    console.log("Not successful");
+                }
+            })
+            .then((data) => {
+                var latlong_locations = {};
+                data.region_metadata.forEach((element) => {
+                    var region = element.name;
+                    let values = Object.values(element.label_location);
+                    latlong_locations[region] = values;
+                });
+                console.log(latlong_locations);
+
+                var psi_list = {
+                    "west": data.items[0].readings["psi_twenty_four_hourly"]["west"],
+                    "national": data.items[0].readings["psi_twenty_four_hourly"]["national"],
+                    "east": data.items[0].readings["psi_twenty_four_hourly"]["east"],
+                    "central": data.items[0].readings["psi_twenty_four_hourly"]["central"],
+                    "south": data.items[0].readings["psi_twenty_four_hourly"]["south"],
+                    "north": data.items[0].readings["psi_twenty_four_hourly"]["north"],
+                };
+
+                var mydate =
+                    "The time now is: <b>" +
+                    new Date(data.items[0].update_timestamp) +
+                    ".</b>";
+                var averagePSI =
+                    (data.items[0].readings["psi_twenty_four_hourly"]["west"] +
+                        data.items[0].readings["psi_twenty_four_hourly"]["national"] +
+                        data.items[0].readings["psi_twenty_four_hourly"]["east"] +
+                        data.items[0].readings["psi_twenty_four_hourly"]["central"] +
+                        data.items[0].readings["psi_twenty_four_hourly"]["south"] +
+                        data.items[0].readings["psi_twenty_four_hourly"]["north"]) /
+                    6;
+
+                var myPSI =
+                    "The average PSI level across the island for the last 24 hours is: <b>" +
+                    Math.round(averagePSI).toString() +
+                    ".</b>";
+
+                let tiles = new L.tileLayer(
+                    "https://maps-{s}.onemap.sg/v3/Default/{z}/{x}/{y}.png", {
+                        detectRetina: true,
+                        maxZoom: 18,
+                        minZoom: 11,
+                        //Do not remove this attribution
+                        attribution: '<img src="https://docs.onemap.sg/maps/images/oneMap64-01.png" style="height:20px;width:20px;">' +
+                            'New OneMap | Map data © contributors, <a href="http://SLA.gov.sg">Singapore Land Authority</a>',
+                    }
+                );
+
+                let map = new L.Map("map", {
+                    center: [1.347833, 103.809357],
+                    zoom: 11.5,
+                    maxBounds: L.latLngBounds(
+                        L.latLng(1.1, 103.5),
+                        L.latLng(1.5, 104.3)
+                    ),
+                }).addLayer(tiles);
+
+                for (const [key, value] of Object.entries(latlong_locations)) {
+                    circle = L.marker(value, {
+                        icon: L.divIcon({
+                            className: "marker",
+                            html: "<b>" + capitalizeFirstLetter(key) + "</b><br>" + psi_list[key].toString(),
+                        }),
+                    });
+                    circle.addTo(map);
+                }
+
+                //let marker = L.marker([1.37745, 103.848]).addTo(map);
+                //marker.bindPopup("<b>Hello world!</b><br>I am a popup.").openPopup();
+
+                document
+                    .querySelector("#placeholder2")
+                    .insertAdjacentHTML("afterbegin", myPSI);
+                document
+                    .querySelector("#placeholder")
+                    .insertAdjacentHTML("afterbegin", mydate);
+            })
+            .catch((error) => console.log("Error"));
+
+        // Guide
+        // https://leafletjs.com/examples/quick-start/
+
+        // let tiles = new L.TileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+    </script>
+</body>
+
+</html>
